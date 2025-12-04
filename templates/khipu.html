@@ -6,80 +6,179 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/game.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/khipu.css') }}">
+
+<style>
+    /* 1. Contenedor de las cuerdas: Las pone una al lado de la otra (FILA) */
+    .khipu-area .cord-container {
+        display: flex;
+        flex-direction: row; /* Alineación horizontal de las cuerdas */
+        justify-content: center;
+        gap: 60px; /* Separación entre cuerda y cuerda */
+        width: 100%;
+        height: 450px; /* Altura suficiente para que cuelguen */
+        padding-top: 20px;
+        position: relative;
+    }
+
+    /* 2. LA CUERDA PRINCIPAL (Elemento visual decorativo arriba) */
+    .khipu-area .cord-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 5%;
+        right: 5%;
+        height: 15px; /* Grosor de la cuerda principal */
+        background: #5D4037; /* Marrón oscuro */
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+        background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.2) 10px, rgba(0,0,0,0.2) 20px);
+        z-index: 10;
+    }
+
+    /* 3. La Cuerda Individual (Colgante Vertical) */
+    .cord {
+        display: flex;
+        flex-direction: column; /* Elementos apilados verticalmente (Etiqueta -> Nudos -> Contador) */
+        align-items: center;
+        width: 100px; /* Ancho de la zona de clic */
+        height: 100%;
+        position: relative;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .cord:hover {
+        transform: translateY(5px); /* Efecto de "tirar" de la cuerda */
+    }
+
+    /* 4. La línea vertical de la cuerda */
+    .cord-line {
+        width: 8px; /* Grosor de la cuerda vertical */
+        height: 300px; /* Largo de la cuerda */
+        background: #8B4513;
+        background-image: repeating-linear-gradient(0deg, transparent, transparent 10px, rgba(0,0,0,0.2) 10px, rgba(0,0,0,0.2) 20px);
+        margin-top: -10px; /* Para que parezca salir de la cuerda principal */
+        border-radius: 0 0 5px 5px;
+        display: flex;
+        flex-direction: column; /* Los nudos se apilan hacia abajo */
+        align-items: center;
+        justify-content: flex-start;
+        padding-top: 20px;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        z-index: 1;
+    }
+
+    /* 5. Etiquetas y Contadores */
+    .cord-label {
+        text-align: center;
+        color: #fff;
+        font-weight: bold;
+        margin-bottom: 5px;
+        text-shadow: 1px 1px 2px #000;
+        background: rgba(0,0,0,0.3);
+        padding: 5px;
+        border-radius: 5px;
+        z-index: 20; /* Encima de la cuerda principal */
+    }
+
+    .knot-count {
+        margin-top: 10px;
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #ffd700;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+
+    /* Ajuste de los nudos (visual) */
+    /* Asumiendo que JS crea divs para los nudos */
+    .knot {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
+        margin-bottom: 5px; /* Espacio vertical entre nudos */
+        box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        z-index: 2;
+        /* Animación de caída */
+        animation: dropKnot 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes dropKnot {
+        from { transform: translateY(-50px) scale(0); opacity: 0; }
+        to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    /* Colores distintivos por posición (opcional, ayuda didáctica) */
+    /* Centenas - Rojo incaico */
+    #cord0 { background-color: #A52A2A; }
+    /* Decenas - Ocre */
+    #cord1 { background-color: #D2691E; }
+    /* Unidades - Verde andino */
+    #cord2 { background-color: #556B2F; }
+
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="game-container khipu-container">
-    <!-- Game Background -->
     <div class="game-background khipu-background"></div>
     
-    <!-- Main Game Area -->
     <div class="game-area">
-        <!-- Question Section -->
         <div class="question-section">
             <div class="question-pergamino">
                 <h2 class="question-title">Sistema de Nudos Khipu</h2>
                 <p class="question-desc" id="questionDesc">
-                    Haz clic en las cuerdas para añadir nudos y formar el número objetivo
+                    Haz clic en las cuerdas colgantes para añadir nudos.
                 </p>
                 <div class="question-info">
                     <span class="grade-info">Grado: {{ grade }}</span>
                     <span class="level-info">Nivel: {{ level }}</span>
-                    <span class="time-info" id="timeRemaining" style="display: none;">Tiempo: <span id="timeValue">--</span>s</span>
                 </div>
             </div>
         </div>
         
-        <!-- Info Panel -->
         <div class="info-panel">
             <div class="current-number">Número Actual: <span id="currentNumber">0</span></div>
             <div class="target-number">Objetivo: <span id="targetNumber">--</span></div>
         </div>
 
-        <!-- Khipu Area -->
         <div class="khipu-area">
             <div class="cord-container">
+                
                 <div class="cord" onclick="addKnot(0)" tabindex="0" role="button" aria-label="Cuerda de centenas">
-                    <div class="cord-label">Centenas<br><span class="cord-value">(×100)</span></div>
-                    <div class="cord-line" id="cord0"></div>
+                    <div class="cord-label">Centenas<br><span class="cord-value">(100)</span></div>
+                    <div class="cord-line" id="cord0">
+                        </div>
                     <div class="knot-count" id="count0">0</div>
                 </div>
+
                 <div class="cord" onclick="addKnot(1)" tabindex="0" role="button" aria-label="Cuerda de decenas">
-                    <div class="cord-label">Decenas<br><span class="cord-value">(×10)</span></div>
+                    <div class="cord-label">Decenas<br><span class="cord-value">(10)</span></div>
                     <div class="cord-line" id="cord1"></div>
                     <div class="knot-count" id="count1">0</div>
                 </div>
+
                 <div class="cord" onclick="addKnot(2)" tabindex="0" role="button" aria-label="Cuerda de unidades">
-                    <div class="cord-label">Unidades<br><span class="cord-value">(×1)</span></div>
+                    <div class="cord-label">Unidades<br><span class="cord-value">(1)</span></div>
                     <div class="cord-line" id="cord2"></div>
                     <div class="knot-count" id="count2">0</div>
                 </div>
+
             </div>
         </div>
 
-        <!-- Instructions -->
         <div class="instructions">
-            <strong>🎯 Instrucciones:</strong> Haz clic en las cuerdas para añadir nudos coloridos y formar el número objetivo.
-            <br>💫 Cada cuerda puede tener máximo 9 nudos. ¡Al llegar a 10, se reinicia y pasa valor a la siguiente!
+            <strong>🎯 Instrucciones:</strong> Toca las cuerdas verticales para anudar.
+            <br>La lectura es horizontal: Centenas ➔ Decenas ➔ Unidades.
         </div>
 
-        <!-- Controls -->
         <div class="controls">
-            <button class="btn btn-success" onclick="generateTarget()" aria-label="Generar nuevo objetivo">
-                🎯 Nuevo Objetivo
-            </button>
-            <button class="btn" onclick="reset()" aria-label="Reiniciar khipu">
-                🔄 Reiniciar
-            </button>
-            <button class="btn btn-danger" onclick="removeKnot()" aria-label="Quitar último nudo">
-                ➖ Quitar Nudo
-            </button>
-            <button class="btn" onclick="showHint()" aria-label="Mostrar pista">
-                💡 Pista
-            </button>
+            <button class="btn btn-success" onclick="generateTarget()">🎯 Nuevo Objetivo</button>
+            <button class="btn" onclick="reset()">🔄 Reiniciar</button>
+            <button class="btn btn-danger" onclick="removeKnot()">➖ Quitar Nudo</button>
+            <button class="btn" onclick="showHint()">💡 Pista</button>
         </div>
 
-        <!-- Score Panel -->
         <div class="score-panel">
             <div class="score-item">
                 <div class="score-value" id="score">0</div>
@@ -89,51 +188,39 @@
                 <div class="score-value" id="streak">0</div>
                 <div class="score-label">Racha</div>
             </div>
-            <div class="score-item">
-                <div class="score-value" id="attempts">0</div>
-                <div class="score-label">Intentos</div>
-            </div>
         </div>
 
-        <!-- Achievement Display -->
         <div id="achievement" class="achievement" style="display: none;"></div>
     </div>
     
-    <!-- Progress Bar -->
     <div class="progress-container">
         <div class="progress-bar">
             <div class="progress-fill" style="width: 30%"></div>
         </div>
-        <span class="progress-text">Progreso del Nivel</span>
+        <span class="progress-text">Progreso</span>
     </div>
     
-    <!-- Help Button -->
-    <button class="help-btn" onclick="showHelp()" aria-label="Mostrar ayuda">
-        <span class="help-icon">❓</span>
-    </button>
+    <button class="help-btn" onclick="showHelp()">❓</button>
 </div>
 
-<!-- Help Modal -->
 <div class="modal" id="helpModal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Cómo jugar Khipu</h3>
-            <button class="modal-close" onclick="closeHelp()" aria-label="Cerrar ayuda">&times;</button>
+            <h3>Khipu Andino</h3>
+            <button class="modal-close" onclick="closeHelp()">&times;</button>
         </div>
         <div class="modal-body">
-            <p>Los khipus eran sistemas de nudos usados por los incas para contar y llevar registros.</p>
+            <p>Este diseño imita un Khipu real:</p>
             <ul>
-                <li><strong>Cuerdas:</strong> Cada cuerda representa una posición decimal (centenas, decenas, unidades)</li>
-                <li><strong>Nudos:</strong> Haz clic en las cuerdas para añadir nudos coloridos</li>
-                <li><strong>Sistema decimal:</strong> Al llegar a 10 nudos, se reinicia y pasa valor a la siguiente cuerda</li>
-                <li><strong>Objetivo:</strong> Forma el número objetivo usando los nudos en las cuerdas</li>
+                <li>Hay una <strong>Cuerda Principal</strong> horizontal arriba.</li>
+                <li>Cuelgan cuerdas secundarias para <strong>Centenas, Decenas y Unidades</strong>.</li>
+                <li>Los nudos se agregan verticalmente en cada cuerda.</li>
+                <li>Lee el número de izquierda a derecha.</li>
             </ul>
-            <p>¡Experimenta con diferentes combinaciones para dominar el sistema numérico inca!</p>
         </div>
     </div>
 </div>
 
-<!-- Level Data -->
 <script>
 window.GAME_DATA = {
     game: 'khipu',
@@ -151,14 +238,10 @@ window.GAME_DATA = {
 <script src="{{ url_for('static', filename='js/khipu-dynamic.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Mostrar tutorial antes de iniciar el juego
     showTutorial('khipu', function() {
         initKhipuImprovedGame();
         showGameHeader();
-        console.log('🪢 Khipu improved game initialized after tutorial for Grade {{ grade }}, Level {{ level }}');
     });
-    
-    console.log('📚 Khipu improved tutorial system ready for Grade {{ grade }}, Level {{ level }}');
 });
 </script>
 {% endblock %}
